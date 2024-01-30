@@ -1,0 +1,62 @@
+Optimization Strategies:
+Partitioning: Ensure the initial dataset (df) is properly partitioned to leverage parallel processing. This can be achieved during the data writing phase or through repartitioning.
+
+Avoid Redundant Reads: If possible, cache or persist the initial dataset (df) if it's reused multiple times to avoid redundant reads from the storage.
+
+Filter Pushdown: Leverage filter pushdown to the data source (Parquet in this case) to minimize the amount of data read from the disk.
+
+Broadcast Join: If the lookupDf DataFrame is small enough to fit into memory, use a broadcast join to avoid shuffling.
+
+Column Pruning: Only read and select the necessary columns from the initial dataset to minimize I/O and memory usage.
+
+Use Efficient Formats: Choose appropriate file formats and compression codecs that suit your data and access patterns.
+
+import org.apache.spark.sql.functions._
+
+
+//-------------- Transformations and Actions-------------------//
+// Read the parquet file
+val df = spark.read.parquet(file)
+
+// Task 1: Filter out rows where "column" is not null
+val df1 = df.filter(col("column").isNotNull)
+
+// Task 2: Filter out rows where "column" is null
+val df2 = df.filter(col("column").isNull)
+
+// Task 3: Inner join with lookupDf on "id"
+val optimizedDf2 = df2.join(broadcast(lookupDf), Seq("id"), "inner")
+
+// Task 4: Write df1 to CSV
+df1.write.csv("output_csv")
+
+// Task 5: Write optimizedDf2 to JSON
+optimizedDf2.write.json("output_json")
+
+
+//----------------Optimized Code ----------------------//
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.SaveMode
+
+// Read the parquet file and repartition for optimization
+val df = spark.read.parquet(file).repartition(10)
+
+// Filter out rows where "column" is not null
+val df1 = df.filter(col("column").isNotNull)
+
+// Filter out rows where "column" is null
+val df2 = df.filter(col("column").isNull)
+
+// Inner join with lookupDf on "id" using broadcast
+val optimizedDf2 = df2.join(broadcast(lookupDf), Seq("id"), "inner")
+
+// Write df1 to CSV and optimizedDf2 to JSON
+df1.write.mode(SaveMode.Overwrite).csv("output_csv")
+optimizedDf2.write.mode(SaveMode.Overwrite).json("output_json")
+
+
+
+
+This optimized code includes improvements such as repartitioning,
+broadcast join, and proper column filtering to enhance performance.
+Adjust the parameters like the number of partitions based on your cluster configuration.
