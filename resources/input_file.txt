@@ -1,0 +1,1 @@
+Apache Spark is a tool for distributed computation of data. It's a great fit for modern data processing.
